@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html {
+  /* Avoid iOS Safari font bumping when rotating between orientations. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  /* Honor iPhone notch / home-indicator insets at the page edges. */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Mild improvement to focus rings — visible only when keyboard-focused. */
+:focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible {
+  outline-offset: 2px;
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
+/* Tap highlight on iOS — keep subtle, not the default heavy blue box. */
+button,
+[role="button"],
+a {
+  -webkit-tap-highlight-color: rgba(15, 23, 42, 0.08);
+}
+
+/* Subtle entrance animation for new cards / new questions. Not used as a
+   transition between phases (asking ↔ answered), only when the keyed root
+   actually unmounts and remounts (e.g. moving to the next question). */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-fade-up {
+  animation: fadeUp 180ms ease-out;
+}
+
+/* Respect users who don't want animations. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none;
+  }
+}

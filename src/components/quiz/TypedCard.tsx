@@ -1,0 +1,141 @@
+import { useEffect, useRef, useState } from "react";
+import type { TypedQuestion } from "../../quiz/types";
+import { Hints } from "./Hints";
+import { Reinforcement } from "./Reinforcement";
+
+export interface TypedAnsweredState {
+  input: string;
+  correct: boolean;
+}
+
+export function TypedCard({
+  question,
+  answered,
+  hints,
+  hintsUsed,
+  onUseHint,
+  onSubmit,
+  personalSentence,
+  promptForSentence,
+}: {
+  question: TypedQuestion;
+  answered: TypedAnsweredState | null;
+  hints: readonly string[];
+  hintsUsed: number;
+  onUseHint: () => void;
+  onSubmit: (input: string) => void;
+  personalSentence: string | null;
+  promptForSentence: boolean;
+}) {
+  const [value, setValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setValue("");
+    inputRef.current?.focus();
+  }, [question.wordId]);
+
+  const isAnswered = answered !== null;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="text-center">
+        {question.partOfSpeech && (
+          <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            {question.partOfSpeech}
+          </div>
+        )}
+        <div className="mt-1 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+          Type the word that matches
+        </div>
+        <p className="mt-2 whitespace-pre-line text-base leading-relaxed text-slate-900 sm:text-lg">
+          {question.promptText}
+        </p>
+      </div>
+      <form
+        className="mt-6 flex flex-col gap-2 sm:flex-row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!isAnswered && value.trim()) onSubmit(value);
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="text"
+          value={isAnswered ? answered.input : value}
+          onChange={(e) => setValue(e.target.value)}
+          disabled={isAnswered}
+          autoComplete="off"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          inputMode="text"
+          enterKeyHint="done"
+          placeholder="your answer"
+          className={`min-h-touch flex-1 rounded-md border bg-white px-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-500 ${
+            isAnswered
+              ? answered.correct
+                ? "border-emerald-400 bg-emerald-50 text-emerald-900"
+                : "border-red-400 bg-red-50 text-red-900"
+              : "border-slate-300"
+          }`}
+        />
+        {!isAnswered && (
+          <button
+            type="submit"
+            disabled={!value.trim()}
+            className="inline-flex min-h-touch items-center justify-center rounded-md bg-slate-900 px-5 text-sm font-medium text-white hover:bg-slate-700 active:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            Submit
+          </button>
+        )}
+      </form>
+      <div className="mt-3">
+        <Hints
+          hints={hints}
+          hintsUsed={hintsUsed}
+          onUseHint={onUseHint}
+          disabled={isAnswered}
+        />
+      </div>
+      {isAnswered && (
+        <>
+          <div
+            role="status"
+            className={`mt-4 rounded-md px-3 py-2 text-sm ${
+              answered.correct
+                ? "bg-emerald-50 text-emerald-900"
+                : "bg-red-50 text-red-900"
+            }`}
+          >
+            {answered.correct ? (
+              <>
+                Correct! The answer was <strong>{question.word}</strong>.
+              </>
+            ) : (
+              <>
+                Not quite. The answer was <strong>{question.word}</strong>.
+              </>
+            )}
+          </div>
+          <Reinforcement
+            wordId={question.wordId}
+            word={question.word}
+            partOfSpeech={question.partOfSpeech}
+            pronunciation={question.pronunciation}
+            meaning={question.meaning}
+            examples={question.examples}
+            synonyms={question.synonyms}
+            antonyms={question.antonyms}
+            wordFamily={question.wordFamily}
+            roots={question.roots}
+            memory={question.memory}
+            confusableWith={question.confusableWith}
+            personalSentence={personalSentence}
+            promptForSentence={promptForSentence}
+          />
+        </>
+      )}
+    </div>
+  );
+}
