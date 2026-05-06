@@ -1,0 +1,12 @@
+{
+  "name": "Vocabulary Builder",
+  "short_name": "Vocab",
+  "description": "Local vocabulary practice. Your spreadsheet is the source of truth.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8fafc",
+  "theme_color": "#0f172a",
+  "icons": []
+}
