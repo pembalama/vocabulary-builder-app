@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { TypedQuestion } from "../../quiz/types";
+import { FailMark, SuccessMark } from "./SuccessMark";
 import { Hints } from "./Hints";
 import { Reinforcement } from "./Reinforcement";
 
@@ -59,27 +60,40 @@ export function TypedCard({
           if (!isAnswered && value.trim()) onSubmit(value);
         }}
       >
-        <input
-          ref={inputRef}
-          type="text"
-          value={isAnswered ? answered.input : value}
-          onChange={(e) => setValue(e.target.value)}
-          disabled={isAnswered}
-          autoComplete="off"
-          autoCapitalize="off"
-          autoCorrect="off"
-          spellCheck={false}
-          inputMode="text"
-          enterKeyHint="done"
-          placeholder="your answer"
-          className={`min-h-touch flex-1 rounded-md border bg-white px-3 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-            isAnswered
-              ? answered.correct
-                ? "border-emerald-400 bg-emerald-50 text-emerald-900"
-                : "border-red-400 bg-red-50 text-red-900"
-              : "border-slate-300"
+        <div
+          className={`relative flex-1 ${
+            isAnswered && !answered.correct ? "animate-shake" : ""
           }`}
-        />
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            value={isAnswered ? answered.input : value}
+            onChange={(e) => setValue(e.target.value)}
+            disabled={isAnswered}
+            autoComplete="off"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            inputMode="text"
+            enterKeyHint="done"
+            placeholder="your answer"
+            className={`min-h-touch w-full rounded-md border bg-white px-3 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              isAnswered ? "pr-11" : ""
+            } ${
+              isAnswered
+                ? answered.correct
+                  ? "border-emerald-400 bg-emerald-50 text-emerald-900"
+                  : "border-red-400 bg-red-50 text-red-900"
+                : "border-slate-300"
+            }`}
+          />
+          {isAnswered && (
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2">
+              {answered.correct ? <SuccessMark /> : <FailMark />}
+            </span>
+          )}
+        </div>
         {!isAnswered && (
           <button
             type="submit"
@@ -100,24 +114,11 @@ export function TypedCard({
       </div>
       {isAnswered && (
         <>
-          <div
-            role="status"
-            className={`mt-4 rounded-md px-3 py-2 text-sm ${
-              answered.correct
-                ? "bg-emerald-50 text-emerald-900"
-                : "bg-red-50 text-red-900"
-            }`}
-          >
-            {answered.correct ? (
-              <>
-                Correct! The answer was <strong>{question.word}</strong>.
-              </>
-            ) : (
-              <>
-                Not quite. The answer was <strong>{question.word}</strong>.
-              </>
-            )}
-          </div>
+          <p role="status" className="sr-only">
+            {answered.correct
+              ? `Correct. The answer is ${question.word}.`
+              : `Incorrect. The answer is ${question.word}.`}
+          </p>
           <Reinforcement
             wordId={question.wordId}
             word={question.word}
