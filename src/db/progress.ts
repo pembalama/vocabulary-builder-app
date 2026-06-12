@@ -1,5 +1,6 @@
 import { db, type Progress } from "./schema";
 import { applySm2, type Quality } from "../quiz/sm2";
+import { bumpReviewLog } from "./stats";
 
 export function freshProgress(wordId: string, now: number): Progress {
   return {
@@ -23,7 +24,7 @@ export async function recordAnswer(
   quality: Quality,
 ): Promise<void> {
   const now = Date.now();
-  await db.transaction("rw", db.progress, async () => {
+  await db.transaction("rw", db.progress, db.meta, async () => {
     const existing = await db.progress.get(wordId);
     const base = existing ?? freshProgress(wordId, now);
     const update = applySm2(base, quality, now);
@@ -32,6 +33,8 @@ export async function recordAnswer(
     } else {
       await db.progress.add({ ...base, ...update });
     }
+    // Same transaction: the daily review log can never drift from progress.
+    await bumpReviewLog(now, quality >= 3);
   });
 }
 

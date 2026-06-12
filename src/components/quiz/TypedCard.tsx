@@ -72,7 +72,7 @@ export function TypedCard({
           inputMode="text"
           enterKeyHint="done"
           placeholder="your answer"
-          className={`min-h-touch flex-1 rounded-md border bg-white px-3 text-base focus:outline-none focus:ring-2 focus:ring-slate-500 ${
+          className={`min-h-touch flex-1 rounded-md border bg-white px-3 text-base focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
             isAnswered
               ? answered.correct
                 ? "border-emerald-400 bg-emerald-50 text-emerald-900"
@@ -84,7 +84,7 @@ export function TypedCard({
           <button
             type="submit"
             disabled={!value.trim()}
-            className="inline-flex min-h-touch items-center justify-center rounded-md bg-slate-900 px-5 text-sm font-medium text-white hover:bg-slate-700 active:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="inline-flex min-h-touch items-center justify-center rounded-md bg-indigo-600 px-5 text-sm font-medium text-white hover:bg-indigo-500 active:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             Submit
           </button>

@@ -1,9 +1,15 @@
+import { memo } from "react";
 import type { Progress, Word } from "../db/schema";
 import { splitTags } from "../lib/normalize";
 import { isLeech } from "../quiz/sm2";
 import { PersonalSentenceEditor } from "./PersonalSentenceEditor";
 
-export function WordCard({
+// Memoized: with a paged library the list can still hold dozens of cards;
+// answering a quiz question or toggling one card shouldn't re-render the rest.
+// `onToggle` takes the id so the parent can pass one stable callback.
+export const WordCard = memo(WordCardInner);
+
+function WordCardInner({
   word,
   progress,
   expanded,
@@ -12,7 +18,7 @@ export function WordCard({
   word: Word;
   progress: Progress | undefined;
   expanded: boolean;
-  onToggle: () => void;
+  onToggle: (id: string) => void;
 }) {
   const open = expanded;
   const tags = splitTags(word.tags);
@@ -28,7 +34,7 @@ export function WordCard({
     >
       <button
         type="button"
-        onClick={onToggle}
+        onClick={() => onToggle(word.id)}
         className="flex w-full items-start justify-between gap-3 rounded-xl p-4 text-left transition active:bg-slate-50"
         aria-expanded={open}
       >

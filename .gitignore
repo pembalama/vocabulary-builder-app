@@ -9,3 +9,8 @@ dist-ssr
 .idea
 .vscode/*
 !.vscode/extensions.json
+tsconfig.app.tsbuildinfo
+
+*.tsbuildinfo
+vocab_list*.pdf
+vocab_list*.xlsx

@@ -90,7 +90,7 @@ export function PersonalSentenceEditor({ wordId, initial, promptOpen }: Props) {
           type="button"
           onClick={save}
           disabled={saving}
-          className="inline-flex min-h-touch items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="inline-flex min-h-touch items-center rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-500 active:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {saving ? "Saving…" : "Save"}
         </button>

@@ -34,6 +34,8 @@ import {
   FlashcardCard,
   type FlashcardAnsweredState,
 } from "../components/quiz/FlashcardCard";
+import { ImportButton } from "../components/ImportButton";
+import { Button, ProgressRing } from "../components/ui";
 
 type Phase =
   | { kind: "idle" }
@@ -54,10 +56,18 @@ type Phase =
     }
   | { kind: "done" };
 
+interface MissedWord {
+  word: string;
+  meaning: string;
+}
+
 interface Stats {
   correct: number;
   total: number;
+  missed: MissedWord[];
 }
+
+const EMPTY_STATS: Stats = { correct: 0, total: 0, missed: [] };
 
 const QUIZ_TYPES: QuizType[] = [
   "wordToMeaning",
@@ -119,10 +129,22 @@ export function Quiz() {
     [pool, filters, quizType],
   );
 
+  // Earliest upcoming review across the whole pool — used for the "come back
+  // tomorrow" guidance on the session-complete screen.
+  const nextDueAt = useMemo(() => {
+    const now = Date.now();
+    let min: number | null = null;
+    for (const w of pool) {
+      const t = progressById.get(w.id)?.nextReviewAt ?? now;
+      if (t > now && (min === null || t < min)) min = t;
+    }
+    return min;
+  }, [pool, progressById]);
+
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [queue, setQueue] = useState<Word[]>([]);
   const [cursor, setCursor] = useState(0);
-  const [stats, setStats] = useState<Stats>({ correct: 0, total: 0 });
+  const [stats, setStats] = useState<Stats>(EMPTY_STATS);
 
   const beginAt = useCallback(
     (q: readonly Word[], startIdx: number) => {
@@ -157,7 +179,7 @@ export function Quiz() {
       now: Date.now(),
     });
     setQueue(q);
-    setStats({ correct: 0, total: 0 });
+    setStats(EMPTY_STATS);
     if (q.length === 0) {
       setPhase({ kind: "done" });
       return;
@@ -170,11 +192,12 @@ export function Quiz() {
   }, [queue, cursor, beginAt]);
 
   const recordAndUpdateStats = useCallback(
-    async (wordId: string, quality: Quality) => {
+    async (wordId: string, quality: Quality, info: MissedWord) => {
       const correct = quality >= 3;
       setStats((s) => ({
         correct: s.correct + (correct ? 1 : 0),
         total: s.total + 1,
+        missed: correct ? s.missed : [...s.missed, info],
       }));
       await recordAnswer(wordId, quality);
     },
@@ -191,17 +214,21 @@ export function Quiz() {
   const answerMc = useCallback(
     async (selected: number) => {
       if (phase.kind !== "asking" || phase.question.kind !== "mc") return;
-      const correct = selected === phase.question.correctIndex;
+      const q = phase.question;
+      const correct = selected === q.correctIndex;
       setPhase({
         kind: "answered",
-        question: phase.question,
+        question: q,
         hintsUsed: phase.hintsUsed,
         mc: { selected, correct },
         typed: null,
         cloze: null,
         flashcard: null,
       });
-      await recordAndUpdateStats(phase.question.wordId, mcQuality(correct));
+      await recordAndUpdateStats(q.wordId, mcQuality(correct), {
+        word: q.word,
+        meaning: q.meaning,
+      });
     },
     [phase, recordAndUpdateStats],
   );
@@ -209,18 +236,22 @@ export function Quiz() {
   const answerTyped = useCallback(
     async (input: string) => {
       if (phase.kind !== "asking" || phase.question.kind !== "typed") return;
-      const correct = typedAnswerMatches(input, phase.question.word);
+      const q = phase.question;
+      const correct = typedAnswerMatches(input, q.word);
       const quality = hintedQuality(phase.hintsUsed, correct);
       setPhase({
         kind: "answered",
-        question: phase.question,
+        question: q,
         hintsUsed: phase.hintsUsed,
         mc: null,
         typed: { input, correct },
         cloze: null,
         flashcard: null,
       });
-      await recordAndUpdateStats(phase.question.wordId, quality);
+      await recordAndUpdateStats(q.wordId, quality, {
+        word: q.word,
+        meaning: q.meaning,
+      });
     },
     [phase, recordAndUpdateStats],
   );
@@ -228,18 +259,22 @@ export function Quiz() {
   const answerCloze = useCallback(
     async (input: string) => {
       if (phase.kind !== "asking" || phase.question.kind !== "cloze") return;
-      const correct = typedAnswerMatches(input, phase.question.matchTarget);
+      const q = phase.question;
+      const correct = typedAnswerMatches(input, q.matchTarget);
       const quality = hintedQuality(phase.hintsUsed, correct);
       setPhase({
         kind: "answered",
-        question: phase.question,
+        question: q,
         hintsUsed: phase.hintsUsed,
         mc: null,
         typed: null,
         cloze: { input, correct },
         flashcard: null,
       });
-      await recordAndUpdateStats(phase.question.wordId, quality);
+      await recordAndUpdateStats(q.wordId, quality, {
+        word: q.word,
+        meaning: q.meaning,
+      });
     },
     [phase, recordAndUpdateStats],
   );
@@ -264,16 +299,20 @@ export function Quiz() {
       if (phase.kind !== "asking" || phase.question.kind !== "flashcard")
         return;
       if (!phase.flipped) return;
+      const q = phase.question;
       setPhase({
         kind: "answered",
-        question: phase.question,
+        question: q,
         hintsUsed: phase.hintsUsed,
         mc: null,
         typed: null,
         cloze: null,
         flashcard: { quality },
       });
-      await recordAndUpdateStats(phase.question.wordId, quality);
+      await recordAndUpdateStats(q.wordId, quality, {
+        word: q.word,
+        meaning: q.meaning,
+      });
     },
     [phase, recordAndUpdateStats],
   );
@@ -388,7 +427,8 @@ export function Quiz() {
     return (
       <EmptyState
         title="No words yet"
-        body="Import a spreadsheet from the top of the page to start quizzing."
+        body="Import your vocabulary spreadsheet to start quizzing. Re-imports are safe — progress is preserved."
+        action={<ImportButton />}
       />
     );
   }
@@ -422,6 +462,7 @@ export function Quiz() {
     return (
       <DoneCard
         stats={stats}
+        nextDueAt={nextDueAt}
         quizType={quizType}
         onQuizTypeChange={setQuizType}
         poolMode={poolMode}
@@ -540,7 +581,9 @@ function SessionView({
       ? phase.flipped
       : phase.question.kind === "flashcard";
   const progressPct =
-    queueLength > 0 ? Math.round(((cursor + (isAnswered ? 1 : 0)) / queueLength) * 100) : 0;
+    queueLength > 0
+      ? Math.round(((cursor + (isAnswered ? 1 : 0)) / queueLength) * 100)
+      : 0;
   return (
     <section className="flex flex-col gap-4">
       <header className="flex flex-col gap-2">
@@ -559,20 +602,16 @@ function SessionView({
               correct
             </span>
           </div>
-          <button
-            type="button"
-            onClick={onEnd}
-            className="inline-flex min-h-touch items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
+          <Button variant="secondary" onClick={onEnd} className="px-3">
             End session
-          </button>
+          </Button>
         </div>
         <div
           aria-label={`Progress: ${progressPct}%`}
           className="h-1 w-full overflow-hidden rounded-full bg-slate-200"
         >
           <div
-            className="h-full bg-slate-900 transition-[width] duration-300 ease-out"
+            className="h-full bg-indigo-500 transition-[width] duration-300 ease-out motion-reduce:transition-none"
             style={{ width: `${progressPct}%` }}
           />
         </div>
@@ -641,14 +680,9 @@ function SessionView({
           {keyboardHint(phase, isAnswered)}
         </p>
         {isAnswered && (
-          <button
-            type="button"
-            onClick={onAdvance}
-            autoFocus
-            className="inline-flex min-h-touch w-full items-center justify-center rounded-md bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 active:bg-slate-800 sm:w-auto"
-          >
+          <Button onClick={onAdvance} autoFocus className="w-full sm:w-auto">
             Next →
-          </button>
+          </Button>
         )}
       </div>
     </section>
@@ -709,14 +743,13 @@ function StartCard(props: StartProps & { onStart: () => void }) {
           dueCount={props.dueCount}
           totalCount={props.totalCount}
         />
-        <button
-          type="button"
+        <Button
           onClick={props.onStart}
           disabled={!props.canStart}
-          className="inline-flex min-h-touch w-full items-center justify-center rounded-md bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 active:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+          className="w-full sm:w-auto"
         >
           Start session
-        </button>
+        </Button>
       </div>
       {!props.canStart && (
         <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
@@ -729,29 +762,83 @@ function StartCard(props: StartProps & { onStart: () => void }) {
   );
 }
 
-function DoneCard(props: StartProps & { onAgain: () => void; stats: Stats }) {
+const MISSED_DISPLAY_CAP = 8;
+
+function DoneCard(
+  props: StartProps & {
+    onAgain: () => void;
+    stats: Stats;
+    nextDueAt: number | null;
+  },
+) {
+  const { stats } = props;
   const pct =
-    props.stats.total === 0
-      ? 0
-      : Math.round((props.stats.correct / props.stats.total) * 100);
+    stats.total === 0 ? 0 : Math.round((stats.correct / stats.total) * 100);
+  const shownMissed = stats.missed.slice(0, MISSED_DISPLAY_CAP);
+  const hiddenMissed = stats.missed.length - shownMissed.length;
+
   return (
     <div className="flex flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
-      <div className="text-center">
+      <div className="flex flex-col items-center gap-3 text-center">
         <h3 className="text-lg font-semibold text-slate-900 sm:text-xl">
           Session complete
         </h3>
-        {props.stats.total > 0 ? (
+        {stats.total > 0 ? (
           <>
-            <div className="mt-2 text-4xl font-semibold tabular-nums text-slate-900 sm:text-5xl">
-              {props.stats.correct}
-              <span className="text-slate-400"> / {props.stats.total}</span>
-            </div>
-            <div className="mt-1 text-sm text-slate-500">{pct}% correct</div>
+            <ProgressRing value={pct} size={120} stroke={10}>
+              <div>
+                <div className="text-2xl font-bold tabular-nums text-slate-900">
+                  {pct}%
+                </div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  correct
+                </div>
+              </div>
+            </ProgressRing>
+            <p className="text-sm text-slate-600">
+              <span className="font-semibold tabular-nums text-slate-900">
+                {stats.correct}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold tabular-nums text-slate-900">
+                {stats.total}
+              </span>{" "}
+              answered correctly
+            </p>
           </>
         ) : (
-          <p className="mt-1 text-sm text-slate-500">No questions answered.</p>
+          <p className="text-sm text-slate-500">No questions answered.</p>
         )}
+        <p className="text-sm text-slate-500">
+          {props.dueCount > 0
+            ? `${props.dueCount} word${props.dueCount === 1 ? "" : "s"} still due — keep going?`
+            : props.nextDueAt !== null
+              ? `All caught up. Next review ${formatNextDue(props.nextDueAt)}.`
+              : "All caught up."}
+        </p>
       </div>
+
+      {shownMissed.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-900">
+            To revisit ({stats.missed.length})
+          </h4>
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {shownMissed.map((m, i) => (
+              <li key={`${m.word}-${i}`} className="text-sm leading-snug">
+                <span className="font-semibold text-slate-900">{m.word}</span>
+                <span className="text-slate-600"> — {m.meaning}</span>
+              </li>
+            ))}
+          </ul>
+          {hiddenMissed > 0 && (
+            <p className="mt-2 text-xs text-amber-800">
+              …and {hiddenMissed} more.
+            </p>
+          )}
+        </div>
+      )}
+
       <Configurator {...props} />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CountSummary
@@ -759,17 +846,27 @@ function DoneCard(props: StartProps & { onAgain: () => void; stats: Stats }) {
           dueCount={props.dueCount}
           totalCount={props.totalCount}
         />
-        <button
-          type="button"
+        <Button
           onClick={props.onAgain}
           disabled={!props.canStart}
-          className="inline-flex min-h-touch w-full items-center justify-center rounded-md bg-slate-900 px-5 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 active:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 sm:w-auto"
+          className="w-full sm:w-auto"
         >
           Start another
-        </button>
+        </Button>
       </div>
     </div>
   );
+}
+
+function formatNextDue(ts: number): string {
+  const now = new Date();
+  const due = new Date(ts);
+  const startOf = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOf(due) - startOf(now)) / 86_400_000);
+  if (days <= 0) return "later today";
+  if (days === 1) return "tomorrow";
+  return `in ${days} days`;
 }
 
 function Configurator(props: StartProps) {
@@ -835,13 +932,13 @@ function Configurator(props: StartProps) {
           />
         </div>
         {filtersDirty && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            className="mt-2 self-start px-3"
             onClick={() => props.onFiltersChange(EMPTY_QUIZ_FILTERS)}
-            className="mt-2 inline-flex min-h-touch items-center self-start rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Clear filters
-          </button>
+          </Button>
         )}
       </FieldSet>
     </div>
@@ -899,7 +996,7 @@ function ModeChip({
       aria-pressed={active}
       className={`inline-flex min-h-touch items-center rounded-full border px-3.5 text-sm font-medium transition ${
         active
-          ? "border-slate-900 bg-slate-900 text-white"
+          ? "border-indigo-600 bg-indigo-600 text-white"
           : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
       }`}
     >
@@ -933,8 +1030,8 @@ function PoolPill({
       <span>{label}</span>
       {typeof count === "number" && (
         <span
-          className={`rounded px-1.5 py-0.5 text-xs ${
-            active ? "bg-slate-900 text-white" : "bg-slate-200 text-slate-700"
+          className={`rounded px-1.5 py-0.5 text-xs tabular-nums ${
+            active ? "bg-indigo-600 text-white" : "bg-slate-200 text-slate-700"
           }`}
         >
           {count}

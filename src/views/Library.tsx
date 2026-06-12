@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db, type Progress } from "../db/schema";
 import { splitTags } from "../lib/normalize";
@@ -15,6 +15,13 @@ import {
   type Filters,
 } from "../components/FilterBar";
 import { WordCard } from "../components/WordCard";
+import { ImportButton } from "../components/ImportButton";
+import { Button } from "../components/ui";
+
+// Render the list in pages so a 5,000-word library doesn't mount 5,000 cards
+// at once on a phone. Filters/search/sort operate on the full set; only
+// rendering is capped.
+const PAGE_SIZE = 60;
 
 export function Library() {
   const words = useLiveQuery(() => db.words.toArray(), []);
@@ -23,12 +30,18 @@ export function Library() {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
   const [showLeechesOnly, setShowLeechesOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("word-asc");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   // Expansion state is keyed by word id so it survives filter/sort changes:
   // a word that's expanded, filtered out, then re-included stays expanded.
   // Bulk Expand-All / Collapse-All only touch currently-visible word ids.
   const [expandedIds, setExpandedIds] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
   );
+
+  // New slice of the library → start from the first page again.
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [filters, sortKey, showLeechesOnly]);
 
   const toggleExpanded = useCallback((id: string) => {
     setExpandedIds((prev) => {
@@ -101,6 +114,11 @@ export function Library() {
     [filtered, progressById, sortKey],
   );
 
+  const pageItems = useMemo(
+    () => sorted.slice(0, visibleCount),
+    [sorted, visibleCount],
+  );
+
   const expandAllVisible = useCallback(() => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -146,11 +164,12 @@ export function Library() {
           No words yet
         </h3>
         <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-slate-600">
-          Use{" "}
-          <span className="font-medium text-slate-800">Import spreadsheet</span>{" "}
-          above to load your vocabulary file. Re-imports are safe — your
-          learning progress is preserved.
+          Import your vocabulary file to get started. Re-imports are safe —
+          your learning progress is preserved.
         </p>
+        <div className="mt-5 flex justify-center">
+          <ImportButton />
+        </div>
       </div>
     );
   }
@@ -223,29 +242,40 @@ export function Library() {
           <p className="text-sm text-slate-600">
             No words match the current filters.
           </p>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            className="mt-3"
             onClick={() => {
               setFilters(EMPTY_FILTERS);
               setShowLeechesOnly(false);
             }}
-            className="mt-3 inline-flex min-h-touch items-center rounded-md border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Clear filters
-          </button>
+          </Button>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {sorted.map((w) => (
-            <WordCard
-              key={w.id}
-              word={w}
-              progress={progressById.get(w.id)}
-              expanded={expandedIds.has(w.id)}
-              onToggle={() => toggleExpanded(w.id)}
-            />
-          ))}
-        </ul>
+        <>
+          <ul className="flex flex-col gap-2">
+            {pageItems.map((w) => (
+              <WordCard
+                key={w.id}
+                word={w}
+                progress={progressById.get(w.id)}
+                expanded={expandedIds.has(w.id)}
+                onToggle={toggleExpanded}
+              />
+            ))}
+          </ul>
+          {sorted.length > visibleCount && (
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+            >
+              Show more ({sorted.length - visibleCount} remaining)
+            </Button>
+          )}
+        </>
       )}
     </section>
   );
