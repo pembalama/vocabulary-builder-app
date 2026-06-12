@@ -596,7 +596,10 @@ function SessionView({
               <span className="text-slate-400"> / {queueLength}</span>
             </span>
             <span className="hidden sm:inline">
-              <span className="font-semibold text-slate-900 tabular-nums">
+              <span
+                key={stats.correct}
+                className="animate-count-pop font-semibold text-slate-900 tabular-nums"
+              >
                 {stats.correct}
               </span>{" "}
               correct
@@ -617,7 +620,10 @@ function SessionView({
         </div>
         <div className="flex items-center justify-between text-xs text-slate-500 sm:hidden">
           <span>
-            <span className="font-semibold text-slate-900 tabular-nums">
+            <span
+              key={stats.correct}
+              className="animate-count-pop font-semibold text-slate-900 tabular-nums"
+            >
               {stats.correct}
             </span>{" "}
             correct
@@ -680,9 +686,17 @@ function SessionView({
           {keyboardHint(phase, isAnswered)}
         </p>
         {isAnswered && (
-          <Button onClick={onAdvance} autoFocus className="w-full sm:w-auto">
-            Next →
-          </Button>
+          // Sticky above the mobile tab bar so "Next" never falls below the
+          // fold after a long reinforcement panel. Static on desktop.
+          <div className="sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-20 sm:static">
+            <Button
+              onClick={onAdvance}
+              autoFocus
+              className="w-full shadow-lg shadow-indigo-600/25 sm:w-auto sm:shadow-sm"
+            >
+              Next →
+            </Button>
+          </div>
         )}
       </div>
     </section>
@@ -779,9 +793,9 @@ function DoneCard(
 
   return (
     <div className="flex flex-col gap-5 rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
-      <div className="flex flex-col items-center gap-3 text-center">
+      <div className="animate-fade-up flex flex-col items-center gap-3 text-center">
         <h3 className="text-lg font-semibold text-slate-900 sm:text-xl">
-          Session complete
+          {doneHeadline(pct, stats.total)}
         </h3>
         {stats.total > 0 ? (
           <>
@@ -819,7 +833,10 @@ function DoneCard(
       </div>
 
       {shownMissed.length > 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+        <div
+          className="animate-fade-up rounded-lg border border-amber-200 bg-amber-50 p-4"
+          style={{ animationDelay: "80ms" }}
+        >
           <h4 className="text-xs font-semibold uppercase tracking-wide text-amber-900">
             To revisit ({stats.missed.length})
           </h4>
@@ -839,23 +856,32 @@ function DoneCard(
         </div>
       )}
 
-      <Configurator {...props} />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <CountSummary
-          poolMode={props.poolMode}
-          dueCount={props.dueCount}
-          totalCount={props.totalCount}
-        />
-        <Button
-          onClick={props.onAgain}
-          disabled={!props.canStart}
-          className="w-full sm:w-auto"
-        >
-          Start another
-        </Button>
+      <div className="animate-fade-up" style={{ animationDelay: "140ms" }}>
+        <Configurator {...props} />
+        <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CountSummary
+            poolMode={props.poolMode}
+            dueCount={props.dueCount}
+            totalCount={props.totalCount}
+          />
+          <Button
+            onClick={props.onAgain}
+            disabled={!props.canStart}
+            className="w-full sm:w-auto"
+          >
+            Start another
+          </Button>
+        </div>
       </div>
     </div>
   );
+}
+
+function doneHeadline(pct: number, total: number): string {
+  if (total === 0) return "Session complete";
+  if (pct === 100) return "Perfect session";
+  if (pct >= 80) return "Great work";
+  return "Session complete";
 }
 
 function formatNextDue(ts: number): string {
@@ -870,20 +896,24 @@ function formatNextDue(ts: number): string {
 }
 
 function Configurator(props: StartProps) {
-  const filtersDirty =
-    Boolean(props.filters.partOfSpeech) ||
-    Boolean(props.filters.difficulty) ||
-    Boolean(props.filters.tag);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const activeFilterValues = [
+    props.filters.partOfSpeech,
+    props.filters.difficulty,
+    props.filters.tag,
+  ].filter(Boolean);
+  const filtersDirty = activeFilterValues.length > 0;
   return (
     <div className="flex flex-col gap-4">
       <FieldSet label="Mode">
-        <div className="flex flex-wrap gap-1.5">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {QUIZ_TYPES.map((t) => (
-            <ModeChip
+            <ModeCard
               key={t}
               active={props.quizType === t}
               onClick={() => props.onQuizTypeChange(t)}
               label={QUIZ_TYPE_LABELS[t]}
+              description={MODE_DESCRIPTIONS[t]}
             />
           ))}
         </div>
@@ -905,7 +935,41 @@ function Configurator(props: StartProps) {
         </div>
       </FieldSet>
       <FieldSet label="Filters">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {/* Mobile: compact entry point — full controls live in a bottom sheet. */}
+        <div className="flex flex-wrap items-center gap-2 sm:hidden">
+          <Button
+            variant="secondary"
+            className="px-3"
+            onClick={() => setSheetOpen(true)}
+          >
+            <FunnelIcon />
+            Filters
+            {filtersDirty && (
+              <span className="rounded-full bg-indigo-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white">
+                {activeFilterValues.length}
+              </span>
+            )}
+          </Button>
+          {activeFilterValues.map((v) => (
+            <span
+              key={v}
+              className="max-w-[9rem] truncate rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700"
+            >
+              {v}
+            </span>
+          ))}
+          {filtersDirty && (
+            <button
+              type="button"
+              onClick={() => props.onFiltersChange(EMPTY_QUIZ_FILTERS)}
+              className="min-h-touch text-xs font-medium text-slate-500 underline-offset-2 hover:underline"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {/* Desktop: inline selects. */}
+        <div className="hidden gap-3 sm:grid sm:grid-cols-3">
           <FilterSelect
             label="Part of speech"
             value={props.filters.partOfSpeech}
@@ -934,14 +998,137 @@ function Configurator(props: StartProps) {
         {filtersDirty && (
           <Button
             variant="secondary"
-            className="mt-2 self-start px-3"
+            className="mt-2 hidden self-start px-3 sm:inline-flex"
             onClick={() => props.onFiltersChange(EMPTY_QUIZ_FILTERS)}
           >
             Clear filters
           </Button>
         )}
       </FieldSet>
+      {sheetOpen && (
+        <FilterSheet
+          initial={props.filters}
+          options={props.filterOptions}
+          onApply={(f) => {
+            props.onFiltersChange(f);
+            setSheetOpen(false);
+          }}
+          onClose={() => setSheetOpen(false)}
+        />
+      )}
     </div>
+  );
+}
+
+// Bottom sheet for quiz filters (mobile only). Edits a DRAFT copy — nothing
+// commits unless Apply is tapped; backdrop, ✕, and Escape all discard.
+function FilterSheet({
+  initial,
+  options,
+  onApply,
+  onClose,
+}: {
+  initial: QuizFilters;
+  options: StartProps["filterOptions"];
+  onApply: (f: QuizFilters) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState<QuizFilters>(initial);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 sm:hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Quiz filters"
+    >
+      <button
+        type="button"
+        aria-label="Close filters"
+        onClick={onClose}
+        className="animate-backdrop absolute inset-0 w-full bg-slate-900/40"
+      />
+      <div className="animate-sheet-up absolute inset-x-0 bottom-0 rounded-t-2xl bg-white px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-3 shadow-2xl">
+        <div aria-hidden className="mx-auto h-1 w-10 rounded-full bg-slate-300" />
+        <div className="mt-3 flex items-center justify-between">
+          <h4 className="text-base font-semibold text-slate-900">Filters</h4>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="inline-flex min-h-touch min-w-touch items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+          >
+            <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none">
+              <path
+                d="M6 6l8 8M14 6l-8 8"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+        </div>
+        <div className="mt-3 flex flex-col gap-3">
+          <FilterSelect
+            label="Part of speech"
+            value={draft.partOfSpeech}
+            options={options.partsOfSpeech}
+            onChange={(v) => setDraft({ ...draft, partOfSpeech: v })}
+          />
+          <FilterSelect
+            label="Difficulty"
+            value={draft.difficulty}
+            options={options.difficulties}
+            onChange={(v) => setDraft({ ...draft, difficulty: v })}
+          />
+          <FilterSelect
+            label="Tag"
+            value={draft.tag}
+            options={options.tags}
+            onChange={(v) => setDraft({ ...draft, tag: v })}
+          />
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => setDraft(EMPTY_QUIZ_FILTERS)}
+          >
+            Clear
+          </Button>
+          <Button onClick={() => onApply(draft)}>Apply</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FunnelIcon() {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 4h14l-5.5 6.5V16l-3 1.5v-7L3 4z" />
+    </svg>
   );
 }
 
@@ -980,27 +1167,67 @@ function FieldSet({
   );
 }
 
-function ModeChip({
+const MODE_DESCRIPTIONS: Record<QuizType, string> = {
+  wordToMeaning: "See the word, pick the meaning",
+  meaningToWord: "See the meaning, pick the word",
+  typed: "Recall and type the word",
+  flashcard: "Flip the card, grade yourself",
+  confusables: "Pick between look-alikes",
+  cloze: "Fill the blank in a sentence",
+};
+
+function ModeCard({
   active,
   onClick,
   label,
+  description,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
+  description: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`inline-flex min-h-touch items-center rounded-full border px-3.5 text-sm font-medium transition ${
+      className={`relative flex min-h-touch flex-col items-start gap-0.5 rounded-xl border p-3 pr-7 text-left transition active:scale-[0.98] motion-reduce:transform-none ${
         active
-          ? "border-indigo-600 bg-indigo-600 text-white"
-          : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+          ? "border-indigo-600 bg-indigo-50/70 ring-1 ring-indigo-600"
+          : "border-slate-200 bg-white hover:border-slate-300"
       }`}
     >
-      {label}
+      <span
+        className={`text-sm font-semibold ${
+          active ? "text-indigo-900" : "text-slate-900"
+        }`}
+      >
+        {label}
+      </span>
+      <span
+        className={`text-[11px] leading-snug ${
+          active ? "text-indigo-700" : "text-slate-500"
+        }`}
+      >
+        {description}
+      </span>
+      {active && (
+        <span
+          aria-hidden
+          className="absolute right-2 top-2 inline-flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-white"
+        >
+          <svg viewBox="0 0 20 20" className="h-3 w-3" fill="none">
+            <path
+              d="M5 10.5l3.5 3.5L15 7"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      )}
     </button>
   );
 }

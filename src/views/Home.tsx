@@ -29,7 +29,11 @@ export function Home({
     [progressList],
   );
 
-  if (words === undefined || progressList === undefined || logEntry === undefined) {
+  if (
+    words === undefined ||
+    progressList === undefined ||
+    logEntry === undefined
+  ) {
     return (
       <div
         role="status"
@@ -76,40 +80,82 @@ export function Home({
   return (
     <section className="flex flex-col gap-4">
       {dueCount > 0 ? (
-        <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-6 text-white shadow-lg shadow-indigo-600/20 sm:p-8">
-          <p className="text-sm font-medium text-indigo-100">
-            Ready for review
-          </p>
-          <p className="mt-1 text-4xl font-bold tabular-nums sm:text-5xl">
-            {dueCount}
-            <span className="ml-2 text-lg font-medium text-indigo-200">
-              word{dueCount === 1 ? "" : "s"} due
-            </span>
-          </p>
-          <button
-            type="button"
-            onClick={() => onNavigate("quiz")}
-            className="mt-5 inline-flex min-h-touch w-full items-center justify-center rounded-lg bg-white px-6 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 active:scale-[0.98] motion-reduce:transform-none sm:w-auto"
-          >
-            Start review
-          </button>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-6 text-white shadow-lg shadow-indigo-600/25 sm:p-8">
+          {/* Soft decorative depth — pure CSS, no images. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-12 -top-20 h-52 w-52 rounded-full bg-white/10 blur-2xl"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-24 -left-10 h-44 w-44 rounded-full bg-violet-400/20 blur-2xl"
+          />
+          <div className="relative">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-indigo-100">
+                Ready for review
+              </p>
+              {streak > 1 && (
+                <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-xs font-medium text-indigo-50">
+                  🔥 {streak}-day streak
+                </span>
+              )}
+            </div>
+            <p className="mt-1.5 text-4xl font-bold tabular-nums sm:text-5xl">
+              {dueCount}
+              <span className="ml-2 text-lg font-medium text-indigo-200">
+                word{dueCount === 1 ? "" : "s"} due
+              </span>
+            </p>
+            <button
+              type="button"
+              onClick={() => onNavigate("quiz")}
+              className="mt-5 inline-flex min-h-touch w-full items-center justify-center rounded-xl bg-white px-6 text-sm font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-50 active:scale-[0.98] motion-reduce:transform-none sm:w-auto"
+            >
+              Start review
+            </button>
+          </div>
         </div>
       ) : (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8">
-          <p className="text-base font-semibold text-emerald-900">
-            All caught up
-          </p>
-          <p className="mt-1 text-sm leading-relaxed text-emerald-800">
-            Nothing is due right now.
-            {nextDueAt !== null && ` Next review ${formatNextDue(nextDueAt)}.`}
-          </p>
-          <Button
-            variant="secondary"
-            className="mt-4"
-            onClick={() => onNavigate("quiz")}
-          >
-            Practice anyway
-          </Button>
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50 p-6 sm:p-8">
+          <div className="flex items-start gap-3">
+            <span
+              aria-hidden
+              className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white"
+            >
+              <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none">
+                <path
+                  d="M5 10.5l3.5 3.5L15 7"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <div>
+              <p className="text-base font-semibold text-emerald-900">
+                All caught up
+                {streak > 1 && (
+                  <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800">
+                    🔥 {streak}-day streak
+                  </span>
+                )}
+              </p>
+              <p className="mt-1 text-sm leading-relaxed text-emerald-800">
+                Nothing is due right now.
+                {nextDueAt !== null &&
+                  ` Next review ${formatNextDue(nextDueAt)}.`}
+              </p>
+              <Button
+                variant="secondary"
+                className="mt-4"
+                onClick={() => onNavigate("quiz")}
+              >
+                Practice anyway
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -130,20 +176,16 @@ export function Home({
           value={accuracy !== null ? `${accuracy}%` : "—"}
           suffix="all time"
         />
-        <StatCard
-          label="Words"
-          value={`${active.length}`}
-          suffix="active"
-        />
+        <StatCard label="Words" value={`${active.length}`} suffix="active" />
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex items-baseline justify-between gap-3">
           <h3 className="text-sm font-semibold text-slate-900">Mastery</h3>
           <button
             type="button"
             onClick={() => onNavigate("library")}
-            className="text-xs font-medium text-indigo-600 underline-offset-2 hover:underline"
+            className="min-h-touch text-xs font-medium text-indigo-600 underline-offset-2 hover:underline"
           >
             Browse library →
           </button>
@@ -171,14 +213,20 @@ export function Home({
 function Onboarding() {
   return (
     <section className="flex flex-col gap-4">
-      <div className="rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 p-6 text-white shadow-lg shadow-indigo-600/20 sm:p-8">
-        <h2 className="text-2xl font-bold sm:text-3xl">Welcome</h2>
-        <p className="mt-2 max-w-md text-sm leading-relaxed text-indigo-100">
-          Build vocabulary with spaced repetition. Your spreadsheet is the
-          source of truth — everything stays in your browser.
-        </p>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 p-6 text-white shadow-lg shadow-indigo-600/25 sm:p-8">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-12 -top-20 h-52 w-52 rounded-full bg-white/10 blur-2xl"
+        />
+        <div className="relative">
+          <h2 className="text-2xl font-bold sm:text-3xl">Welcome</h2>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-indigo-100">
+            Build vocabulary with spaced repetition. Your spreadsheet is the
+            source of truth — everything stays in your browser.
+          </p>
+        </div>
       </div>
-      <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
         <ol className="flex flex-col gap-4">
           <Step n={1} title="Prepare your spreadsheet">
             XLSX or CSV with columns like Word, Part of Speech, Meaning,
@@ -237,11 +285,11 @@ function StatCard({
   highlight?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
         {label}
       </div>
-      <div className="mt-1 flex items-baseline gap-1.5">
+      <div className="mt-1.5 flex items-baseline gap-1.5">
         <span
           className={`text-2xl font-bold tabular-nums ${
             highlight ? "text-indigo-600" : "text-slate-900"
@@ -264,16 +312,24 @@ function MasteryBar({
 }) {
   if (total === 0) return null;
   const pct = (n: number) => `${(n / total) * 100}%`;
+  const seg =
+    "h-full transition-[width] duration-700 ease-out motion-reduce:transition-none";
   return (
     <div
       aria-hidden
-      className="mt-3 flex h-3 w-full overflow-hidden rounded-full bg-slate-200"
+      className="mt-3 flex h-2.5 w-full overflow-hidden rounded-full bg-slate-200"
     >
-      <div className="bg-slate-300" style={{ width: pct(buckets.new) }} />
-      <div className="bg-amber-400" style={{ width: pct(buckets.learning) }} />
-      <div className="bg-indigo-400" style={{ width: pct(buckets.solid) }} />
+      <div className={`${seg} bg-slate-300`} style={{ width: pct(buckets.new) }} />
       <div
-        className="bg-emerald-500"
+        className={`${seg} bg-amber-400`}
+        style={{ width: pct(buckets.learning) }}
+      />
+      <div
+        className={`${seg} bg-indigo-400`}
+        style={{ width: pct(buckets.solid) }}
+      />
+      <div
+        className={`${seg} bg-emerald-500`}
         style={{ width: pct(buckets.mastered) }}
       />
     </div>

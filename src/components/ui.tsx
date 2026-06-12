@@ -1,4 +1,10 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from "react";
 
 // Small shared UI primitives. The app's accent color is indigo; neutrals are
 // slate. Keep all primary-action styling here so it stays consistent.
@@ -36,6 +42,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 );
 
 // Circular progress indicator (0–100). Children render centered inside.
+// The arc animates from 0 to `value` on mount (one CSS transition; under
+// prefers-reduced-motion it snaps instantly).
 export function ProgressRing({
   value,
   size = 112,
@@ -48,6 +56,14 @@ export function ProgressRing({
   children?: ReactNode;
 }) {
   const clamped = Math.max(0, Math.min(100, value));
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    // One frame at 0 so the stroke transition has a starting point.
+    const id = requestAnimationFrame(() => setDisplay(clamped));
+    return () => cancelAnimationFrame(id);
+  }, [clamped]);
+
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   return (
@@ -74,7 +90,7 @@ export function ProgressRing({
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
-          strokeDashoffset={c * (1 - clamped / 100)}
+          strokeDashoffset={c * (1 - display / 100)}
           className="stroke-indigo-500 transition-[stroke-dashoffset] duration-700 ease-out motion-reduce:transition-none"
         />
       </svg>

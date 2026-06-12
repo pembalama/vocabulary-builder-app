@@ -1,4 +1,5 @@
 import type { McQuestion } from "../../quiz/types";
+import { FailMark, SuccessMark } from "./SuccessMark";
 import { Reinforcement } from "./Reinforcement";
 
 export interface McAnsweredState {
@@ -38,24 +39,12 @@ export function McCard({
       </ol>
       {isAnswered && (
         <>
-          <div
-            role="status"
-            className={`mt-4 rounded-md px-3 py-2 text-sm ${
-              answered.correct
-                ? "bg-emerald-50 text-emerald-900"
-                : "bg-red-50 text-red-900"
-            }`}
-          >
-            {answered.correct ? (
-              "Correct!"
-            ) : (
-              <>
-                Not quite. The answer was option{" "}
-                <strong>{question.correctIndex + 1}</strong>:{" "}
-                <span>{question.options[question.correctIndex]}</span>
-              </>
-            )}
-          </div>
+          {/* Screen-reader announcement; visually the tiles carry the result. */}
+          <p role="status" className="sr-only">
+            {answered.correct
+              ? "Correct."
+              : `Incorrect. The answer is: ${question.options[question.correctIndex]}`}
+          </p>
           <Reinforcement
             wordId={question.wordId}
             word={question.word}
@@ -139,9 +128,11 @@ function OptionButton({
       "border-slate-300 bg-white hover:border-slate-500 hover:bg-slate-50",
     );
   } else if (showCorrect) {
-    classes.push("border-emerald-500 bg-emerald-50 text-emerald-900");
+    classes.push(
+      "animate-correct-lock border-emerald-500 bg-emerald-50 text-emerald-900",
+    );
   } else if (showWrong) {
-    classes.push("border-red-500 bg-red-50 text-red-900");
+    classes.push("animate-shake border-red-500 bg-red-50 text-red-900");
   } else {
     classes.push("border-slate-200 bg-slate-50 text-slate-500");
   }
@@ -159,6 +150,8 @@ function OptionButton({
       <span className="flex-1 whitespace-pre-line leading-relaxed">
         {option}
       </span>
+      {showCorrect && <SuccessMark />}
+      {showWrong && <FailMark />}
     </button>
   );
 }
