@@ -1,19 +1,20 @@
 import { useState } from "react";
-import { ImportButton } from "./components/ImportButton";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Home } from "./views/Home";
 import { Library } from "./views/Library";
 import { Quiz } from "./views/Quiz";
 import { Settings } from "./views/Settings";
 import { useDueCount } from "./quiz/useDueCount";
 
-type View = "library" | "quiz" | "settings";
+type View = "home" | "quiz" | "library" | "settings";
 
 export function App() {
-  const [view, setView] = useState<View>("library");
+  const [view, setView] = useState<View>("home");
   const dueCount = useDueCount();
 
   return (
     <div className="mx-auto flex min-h-full max-w-4xl flex-col">
-      {/* Sticky top bar — always reachable on mobile, including the active mode badge. */}
+      {/* Sticky top bar — always reachable on mobile, including the due badge. */}
       <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-slate-50/90 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-slate-50/75 sm:py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
@@ -31,8 +32,8 @@ export function App() {
         >
           <NavButton
             current={view}
-            value="library"
-            label="Library"
+            value="home"
+            label="Home"
             onSelect={setView}
           />
           <NavButton
@@ -40,6 +41,12 @@ export function App() {
             value="quiz"
             label="Quiz"
             badge={dueCount}
+            onSelect={setView}
+          />
+          <NavButton
+            current={view}
+            value="library"
+            label="Library"
             onSelect={setView}
           />
           <NavButton
@@ -52,12 +59,12 @@ export function App() {
       </header>
 
       <main className="flex-1 px-4 pb-[max(env(safe-area-inset-bottom),1rem)] pt-4 sm:pt-6">
-        <div className="flex flex-col gap-5">
-          <ImportButton />
-          {view === "library" && <Library />}
+        <ErrorBoundary>
+          {view === "home" && <Home onNavigate={setView} />}
           {view === "quiz" && <Quiz />}
+          {view === "library" && <Library />}
           {view === "settings" && <Settings />}
-        </div>
+        </ErrorBoundary>
       </main>
     </div>
   );
@@ -82,7 +89,7 @@ function NavButton({
       type="button"
       onClick={() => onSelect(value)}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-touch flex-1 items-center justify-center gap-1.5 rounded-md px-3 text-sm font-medium transition ${
+      className={`flex min-h-touch flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium transition sm:px-3 ${
         active
           ? "bg-white text-slate-900 shadow-sm"
           : "text-slate-600 hover:text-slate-900"
@@ -93,7 +100,7 @@ function NavButton({
         <span
           aria-label={`${badge} due`}
           className={`rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums ${
-            active ? "bg-slate-900 text-white" : "bg-slate-300/70 text-slate-700"
+            active ? "bg-indigo-600 text-white" : "bg-slate-300/70 text-slate-700"
           }`}
         >
           {badge}

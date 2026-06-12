@@ -44,7 +44,7 @@ export function ImportButton() {
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="inline-flex min-h-touch items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-slate-700 active:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-touch items-center justify-center rounded-md bg-indigo-600 px-4 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-500 active:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={status.kind === "working"}
         >
           {status.kind === "working" ? "Importing…" : "Import spreadsheet"}
